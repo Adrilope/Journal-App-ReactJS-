@@ -9,9 +9,18 @@ import { notAuthenticatedState } from "../../fixtures/authFixtures"
 
 
 const mockStartGoogleSignIn = jest.fn()
+const mockStartLoginWithEmailPassword = jest.fn()
 
 jest.mock('../../../src/store/auth/thunks', () => ({
-    startGoogleSignIn: () => mockStartGoogleSignIn
+    startGoogleSignIn: () => mockStartGoogleSignIn,
+    startLoginWithEmailPassword: ({email, password}) => {
+        return () => mockStartLoginWithEmailPassword({email, password})
+    }
+}))
+
+jest.mock('react-redux', () => ({
+    ...jest.requireActual('react-redux'),
+    useDispatch: () => (fn) => fn()
 }))
 
 
@@ -27,6 +36,8 @@ const store = configureStore({
 
 
 describe('Tests with <LoginPage />', () => { 
+    beforeEach(() => jest.clearAllMocks())
+
     test('should render the component correctly', () => { 
         render(
             <Provider store={store}>
@@ -53,5 +64,34 @@ describe('Tests with <LoginPage />', () => {
         fireEvent.click(googleBtn)
 
         expect(mockStartGoogleSignIn).toHaveBeenCalled()
+    })
+
+    test('submit should call startLoginWithEmailPassword', () => { 
+        const email = 'adri@google.com'
+        const password = '123456'
+        
+        render(
+            <Provider store={store}>
+                <MemoryRouter>
+                    <LoginPage />
+                </MemoryRouter>
+            </Provider>
+        )
+
+
+        const emailField = screen.getByRole('textbox', {name: 'Email'})
+        fireEvent.change(emailField, {target: { name: 'email', value: email}})
+
+        const passwordField = screen.getByTestId('password')
+        fireEvent.change(passwordField, {target: { name: 'password', value: password}})
+
+        const loginForm = screen.getByLabelText('submit-form')
+        fireEvent.submit(loginForm)
+
+
+        expect(mockStartLoginWithEmailPassword).toHaveBeenCalledWith({
+            email: email,
+            password: password
+        })
     })
 })
